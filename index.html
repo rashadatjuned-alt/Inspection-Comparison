@@ -7,8 +7,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#ffffff;--bg2:#f6f6f2;--bg3:#efefea;
-  --text:#1a1a1a;--text2:#666;--text3:#999;
+  --bg:#ffffff;--bg2:#f6f6f2;--bg3:#efefea;--text:#1a1a1a;--text2:#666;--text3:#999;
   --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.20);
   --green:#1D9E75;--gbg:#E1F5EE;--gbdr:#9FE1CB;--gtxt:#085041;
   --red:#A32D2D;--rbg:#FCEBEB;--rbdr:#F7C1C1;--rtxt:#791F1F;
@@ -66,8 +65,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pg{color:var(--text2);border-color:var(--border)}
 .fg{display:grid;grid-template-columns:1fr 1fr 1fr}
 @media(max-width:680px){.fg{grid-template-columns:1fr}}
-.fc{padding:12px 14px;border-right:1px solid var(--border)}
-.fc:last-child{border-right:none}
+.fc{padding:12px 14px;border-right:1px solid var(--border)}.fc:last-child{border-right:none}
 .flbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
 .fl-o{color:var(--btxt)}.fl-a{color:var(--purple)}.fl-t{color:#7B5EA7}
 .ftext{font-size:12px;line-height:1.65;color:var(--text)}
@@ -83,6 +81,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .mr span{background:var(--bg2);padding:3px 8px;border-radius:4px;border:1px solid var(--border)}
 .tb-bar{background:var(--gbg);border:1px solid var(--gbdr);border-radius:var(--r);padding:9px 14px;font-size:12px;color:var(--gtxt);margin-bottom:14px;line-height:1.6}
 .na{color:var(--text3);font-style:italic}
+.col-info{font-size:11px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;margin-bottom:10px;font-family:monospace}
 </style>
 </head>
 <body>
@@ -90,14 +89,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
   <div class="logo">IC</div>
   <div>
     <h1>Inspection Report Comparison Tool</h1>
-    <p>Any factory &nbsp;|&nbsp; Boiler · Electrical · Structural · Fire &nbsp;|&nbsp; No API key needed</p>
+    <p>Any factory &nbsp;|&nbsp; Boiler · Electrical · Structural · Fire &nbsp;|&nbsp; Auto column detection</p>
   </div>
 </div>
 
 <div class="wrap">
   <div class="tb-bar">
-    &#9432; <strong>PDF is source of truth.</strong> Comparison is <strong>exact</strong> — even a single space difference is flagged.<br>
-    Fields: <strong>Inspection Observation</strong> &nbsp;|&nbsp; <strong>Inspection Action Plan</strong> &nbsp;|&nbsp; <strong>Inspection Timeline</strong>
+    &#9432; <strong>Excel rows drive the comparison — PDF is source of truth.</strong> Each Excel row is matched against the PDF. Any difference is flagged as an Excel error: the PDF value is what Excel <em>should</em> contain.
+    &nbsp;|&nbsp; Fields compared: <strong>Inspection Observation</strong> &nbsp;|&nbsp; <strong>Inspection Action Plan / Recommendation</strong> &nbsp;|&nbsp; <strong>Inspection Timeline / Timeline given</strong> &nbsp;|&nbsp; <strong>Final Timeline</strong> &nbsp;· Date formats normalised automatically. Fire PDFs use "Inspection Recommendation" &amp; "Timeline given" — auto-detected.
   </div>
 
   <div class="card">
@@ -140,6 +139,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
   <button class="btn" id="analyzeBtn" disabled onclick="runAnalysis()">Analyze &amp; Compare</button>
 
+  <div style="margin-bottom:14px">
+    <button onclick="debugPdf()" style="width:100%;padding:10px;background:#fff;border:1.5px solid #534AB7;color:#534AB7;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+      🔍 Debug: Dump PDF Tokens (upload any PDF first)
+    </button>
+    <div id="debugOut" style="display:none;margin-top:10px;background:#1a1a1a;color:#0f0;font-family:monospace;font-size:11px;padding:12px;border-radius:8px;max-height:400px;overflow-y:auto;white-space:pre;"></div>
+  </div>
+
   <div class="pw card" id="progWrap">
     <div class="pl" id="pl">Processing...</div>
     <div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div>
@@ -150,6 +156,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
     <div class="sg" id="sg"></div>
     <div class="tabs" id="tabs"></div>
     <div id="panels"></div>
+
+    <!-- SUMMARY LOG -->
+    <div id="summaryWrap" style="margin-top:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)">Summary Log — copy &amp; paste ready</div>
+        <button onclick="copyLog()" id="copyBtn" style="font-size:12px;font-weight:600;padding:6px 16px;border-radius:20px;border:1.5px solid var(--purple);background:#fff;color:var(--purple);cursor:pointer;transition:all .15s">&#128203; Copy to Clipboard</button>
+      </div>
+      <textarea id="summaryLog" readonly
+        style="width:100%;min-height:340px;font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.75;background:#1a1a1a;color:#e8e8e8;border:none;border-radius:10px;padding:16px;resize:vertical;outline:none;white-space:pre;"
+        spellcheck="false"></textarea>
+    </div>
   </div>
 </div>
 
@@ -158,42 +175,681 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ── Column boundary AUTO-DETECTION from PDF header row ──
-// Scans the PDF for the table column header row and extracts precise x positions
-// Works for any factory since RSC templates always use the same column headers
+// ============================================================
+// ⚠️  BOILER — COMPLETELY FROZEN. DO NOT MODIFY.
+// ============================================================
+async function extractBoilerPdf(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const content=await page.getTextContent({normalizeWhitespace:true});
+    let lastY=null,pageText='';
+    content.items.forEach(item=>{
+      const y=Math.round(item.transform[5]);
+      if(lastY!==null&&Math.abs(y-lastY)>2)pageText+='\n';
+      pageText+=item.str;
+      if(item.hasEOL)pageText+='\n';
+      lastY=y;
+    });
+    out+=pageText+'\n';
+  }
+  const findings=[];
+  const re=/FINDING\s*NO\s*:?\s*([A-Z])\s*-\s*(\d+)/gi;
+  const positions=[];let m;
+  while((m=re.exec(out))!==null)positions.push({idx:m.index,itemNo:m[2]});
+  positions.forEach((pos,i)=>{
+    const end=i+1<positions.length?positions[i+1].idx:Math.min(pos.idx+3000,out.length);
+    const block=out.slice(pos.idx,end);
+    const fm=block.match(/FINDING\s*:\s*([\s\S]*?)(?=RECOMMENDATION\s*:|PRIORITY\s*:|REMEDIATION)/i);
+    const rm=block.match(/RECOMMENDATION\s*:\s*([\s\S]*?)(?=PRIORITY\s*:|REMEDIATION|FINDING\s*NO)/i);
+    const tm=block.match(/REMEDIATION\s*TIME\s*[\r\n]+([^\r\n]+)[\r\n]+FRAME/i);
+    const tm2=!tm&&block.match(/REMEDIATION\s*TIME\s*FRAME\s*:?\s*([^\r\n]+)/i);
+    const clean=s=>s.replace(/FINDING\s*NO\s*:?\s*[A-Z]-\d+/gi,'').replace(/CATEGORY\s*:.*$/mi,'').replace(/BOILER\s*REGISTRATION\s*NO\s*:.*$/mi,'').replace(/\s+/g,' ').trim();
+    const obs=clean(fm?fm[1]:'');
+    const act=clean(rm?rm[1]:'');
+    const tl=(tm?tm[1]:tm2?tm2[1]:'').trim();
+    if((obs||act)&&!findings.find(f=>f.itemNo===pos.itemNo))
+      findings.push({itemNo:pos.itemNo,observation:obs,actionPlan:act,timeline:tl});
+  });
+  findings.sort((a,b)=>parseInt(a.itemNo)-parseInt(b.itemNo));
+  return findings;
+}
+// ============================================================
+// END BOILER FROZEN SECTION
+// ============================================================
 
-function detectColBounds(textItems, pageW, type){
-  // Hardcoded column boundaries as % of page width.
-  // Verified from actual RSC template PDFs across multiple factories:
-  //   Structural UTAH (842pt):   obs=7.2%, act=15.8%, tl=25.8%, endtl=33%
-  //   Structural Divine (792pt): obs=7.2%, act=16.3%, tl=27.0%, endtl=34%
-  //   Electrical UTAH (1008pt):  obs=6.8%, act=16.8%, tl=28.7%, endtl=33.7%
-  //   Fire UTAH (792pt):         obs=17.7%, act=25.9%, tl=38.9%, endtl=47%
-  //
-  // These are stable because all factories use the same RSC report template.
-  // The column proportions do NOT vary between factories.
-  const PCT = {
-    structural: {o:0.068, a:0.158, t:0.258, e:0.335},
-    electrical: {o:0.068, a:0.168, t:0.287, e:0.340},
-    fire:       {o:0.177, a:0.259, t:0.389, e:0.472}
-  }[type] || {o:0.068, a:0.168, t:0.287, e:0.340};
 
-  return {
-    itemNo:   [pageW * 0.030,   pageW * PCT.o - 2],
-    obs:      [pageW * PCT.o,   pageW * PCT.a - 2],
-    action:   [pageW * PCT.a,   pageW * PCT.t - 2],
-    timeline: [pageW * PCT.t,   pageW * PCT.e - 2],
-    status:   [pageW * 0.720,   pageW * 0.820]
+// ============================================================
+// ⚠️  STRUCTURAL & ELECTRICAL — COMPLETELY FROZEN. DO NOT MODIFY.
+// ============================================================
+// Confirmed correct against real Taufiq Sweater Ltd data:
+//   Structural  : 13/13 items match (100%)
+//   Electrical  : 49/49 items parsed correctly (confirmed by pre-flight)
+//
+// Four critical fixes locked in:
+//   1. args[1] (not args[2]) for constructPath coordinates in pdfjs 3.x
+//   2. coords.length===4 branch for rectangle sub-ops [x, y, w, h]
+//   3. nearestLineBetween: direction-aware closest-match (no ±2 buffer)
+//   4. itemNoMax = obsX-16 (not -24) — covers both:
+//        Structural (itemX=46, obsX=72 → margin=10px)
+//        Electrical (itemX=56, obsX=77 → margin=5px)
+// DO NOT change the operator scan, band detection, or column detection logic.
+// ============================================================
+
+// ============================================================
+// COLUMN AUTO-DETECTION
+// ============================================================
+
+const FALLBACK = {
+  electrical:{itemNoMax:0.070,obsMin:0.058,obsMax:0.163,actMin:0.165,actMax:0.284,tlMin:0.287,tlMax:0.380},
+  structural: {itemNoMax:0.055,obsMin:0.055,obsMax:0.180,actMin:0.180,actMax:0.310,tlMin:0.312,tlMax:0.375},
+  fire:       {itemNoMax:0.055,obsMin:0.110,obsMax:0.275,actMin:0.278,actMax:0.408,tlMin:0.410,tlMax:0.490},
+};
+
+const NOISE_SET = new Set([
+  'item','no','item no','no.','inspection observation','observation',
+  'inspection action plan','action plan','action plan from','action plan from inspection',
+  '(recommendation )','recommendation','(recommendation)','inspection recommendation',
+  '(given in','given in','report )','inspection timeline','timeline','timeline given',
+  'timeline from','timeline from inspection',
+  'inspection comments (after physical inspection )','inspection comments (after physical',
+  'inspection comments','comments after physical inspection','comments after physical',
+  'factory timeline','final timeline','(dd-mmm-yyyy)','dd-mmm-yyyy',
+  'timeline given',
+  'final action plan','final action plan from factory','final action plan (factory)',
+  '(factory)','factory','pictorial evidence','progress status','status on the',
+  '(on the','on the','date of','inspection )','(approved','approved',
+  'timeline )','timeline)','inspection)','(approved)','status','factory)',
+  'issue type','issue sub-category','issue sub-','category','given',
+  'no.','item no.','(recommendation','recommendation )',
+]);
+function isNoise(s){
+  if(!s||s.length<2)return true;
+  return NOISE_SET.has(s.toLowerCase().trim());
+}
+
+// ============================================================
+// COLUMN DETECTION
+// From token dump we know exact positions. Strategy:
+// 1. Find tlX from "Timeline" + "(given in" tokens
+// 2. Find tlEndX from "Inspection Comments" token
+// 3. In data extraction, skip tokens that are comment entries
+//    (start with "On DD/MM/YYYY:") since they overlap x-range
+// ============================================================
+
+function detectColumns(tokens){
+  // Handles both electrical and structural PDF header layouts:
+  // Electrical: "Inspection Observation" | "Inspection Action Plan" | "Timeline (given in report)"
+  // Structural: "Observation" | "Action Plan from Inspection" | "Timeline from Inspection"
+
+  let obsX=null, actX=null, tlX=null, tlEndX=null;
+
+  for(const tk of tokens){
+    const s=tk.str.toLowerCase().replace(/\s+/g,' ').trim();
+    if(s.length<2)continue;
+
+    if(s==='inspection observation'||s==='observation'){
+      if(obsX===null||tk.x<obsX)obsX=tk.x;
+    }
+    else if(s.startsWith('inspection action plan')||s.startsWith('inspection recommendation')||
+            s==='action plan'||s.startsWith('action plan from')||s.startsWith('recommendation')){
+      if(actX===null||tk.x<actX)actX=tk.x;
+    }
+    else if(s.startsWith('inspection comments')||s.startsWith('comments after physical')||
+            s.startsWith('after physical')||s.startsWith('factory timeline')||
+            s.startsWith('final action plan')||s.startsWith('final timeline')||
+            s.startsWith('pictorial evidence')||s.startsWith('progress status')||
+            s.startsWith('issue type')){
+      if(tlEndX===null||tk.x<tlEndX)tlEndX=tk.x;
+    }
+    else if(s==='timeline'||s==='timeline given'||s.startsWith('inspection timeline')||
+            s.startsWith('timeline from')||s==='given in'||s==='report )'){
+      if(tlX===null||tk.x<tlX)tlX=tk.x;
+    }
+  }
+
+  if(tlX!==null&&tlEndX!==null&&tlX>=tlEndX){
+    tlX=null;
+    for(const tk of tokens){
+      const s=tk.str.toLowerCase().replace(/\s+/g,' ').trim();
+      if((s==='timeline'||s==='timeline given'||s.startsWith('inspection timeline')||s.startsWith('timeline from'))&&tk.x<tlEndX){
+        if(tlX===null||tk.x<tlX)tlX=tk.x;
+      }
+    }
+  }
+
+  if(obsX==null||actX==null||tlX==null)return null;
+  if(!(obsX<actX&&actX<tlX))return null;
+
+  const obsMin=obsX-18;
+  const actMin=actX-20;
+  const tlMin =tlX-10;
+
+  // itemNoMax must be strictly greater than item number x positions.
+  // Structural: item nums at x=46, obs header at x=72 → obsX-24=48 > 46 ✓
+  const itemNoMax=obsX-16;  // -16 covers both Structural (itemX=46,obsX=72) and Electrical (itemX=56,obsX=77)
+
+  // tlMax: find leftmost boundary after the timeline column.
+  // Check both: (1) the "Final Action Plan" / "Final Timeline" header x,
+  // and (2) the leftmost comment data token (On DD/... or DD/MM/YYYY:).
+  // Use whichever gives the tighter (smaller) boundary.
+  let tlDataEndX = tlEndX;
+  for(const tk of tokens){
+    if(tk.x > tlX + 20){
+      const s = tk.str.trim();
+      const sl = s.toLowerCase();
+      // Comment data patterns
+      if(/^On\s+\d/i.test(s)||/^New\s+Timeline\s*:/i.test(s)||/^\d{2}\/\d{2}\/\d{4}:/.test(s)){
+        if(tlDataEndX===null || tk.x < tlDataEndX) tlDataEndX = tk.x;
+      }
+      // Final Action Plan / Final Timeline header tokens — these mark the end of tl column
+      if(sl.startsWith('final action plan')||sl.startsWith('final timeline')){
+        if(tlDataEndX===null || tk.x < tlDataEndX) tlDataEndX = tk.x;
+      }
+    }
+  }
+  // Use -5 buffer (instead of -2) to exclude words that wrap just inside the boundary
+  const tlMax = (tlDataEndX!=null && tlDataEndX>tlX) ? tlDataEndX-5 : tlMin+(actMin-obsMin);
+
+  return{
+    itemNoMax,
+    obsMin, obsMax:actMin-2,
+    actMin, actMax:tlMin-2,
+    tlMin,  tlMax,
   };
 }
 
+// Tokens that belong to the "Inspection Comments" column but physically
+// overlap the timeline x-range. Filter these from timeline extraction.
+// Patterns seen in real PDFs:
+//   "On 08/03/2017: Not Corrected."
+//   "On 07/06/17: Corrected."
+//   "New Timeline: 20/04/2017"
+//   "On 08/03/2017: Not Corrected. New Timeline:20/04/2017"
+function isCommentToken(str){
+  return /^On\s+\d/i.test(str) || /^New\s+Timeline\s*:/i.test(str) || /^\d{2}\/\d{2}\/\d{4}:/.test(str);
+}
+
+function cleanTimeline(raw){
+  return(raw||'').trim();
+}
+
+
+// ============================================================
+// TABLE PDF PARSER — Electrical, Structural, Fire
+// ============================================================
+async function extractTablePdf(file, type){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+
+  const allTokens  =[];
+  const pageHeaders=[];
+  const pageLineMap={};  // horizontal rule y-positions per page, for row boundaries
+  let   globalCols =null;
+  let   detSrc     ='fallback';
+
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const vp  =page.getViewport({scale:1});
+    const W   =vp.width;
+    const content=await page.getTextContent({normalizeWhitespace:false});
+    const pageToks=content.items
+      .map(it=>({x:it.transform[4],y:it.transform[5],str:(it.str||'').trim(),page:p,W,width:it.width||0}))
+      .filter(it=>it.str.length>0);
+
+    // Extract horizontal rule positions (row separators) from the page operator list.
+    // In pdfjs 3.x ALL path drawing comes as OPS.constructPath with:
+    //   args[0] = sub-op codes array (19=rectangle, 13=moveTo, 14=lineTo ...)
+    //   args[1] = flat coordinate array  <-- CONFIRMED by inspecting real PDF ops
+    //   args[2] = bounding box (ignore)
+    //
+    // Rectangle sub-op (19): coords = [x, y, width, height]  (exactly 4 values)
+    //   Thin horizontal rect: |height|<2 AND |width|>200 = table row separator
+    //
+    // Line segment sub-ops: coords = [x0,y0, x1,y1, ...]  (pairs)
+    //   Consecutive pair with |dy|<2 AND |dx|>200 = horizontal rule
+    const ops=await page.getOperatorList();
+    const pageLines=[];
+    for(let oi=0;oi<ops.fnArray.length;oi++){
+      if(ops.fnArray[oi]!==pdfjsLib.OPS.constructPath)continue;
+      const args=ops.argsArray[oi];
+      if(!args)continue;
+      const coords=args[1];
+      if(!coords||!coords.length)continue;
+      if(coords.length===4){
+        const[rx,ry,rw,rh]=coords;
+        if(Math.abs(rh)<2&&Math.abs(rw)>200){
+          pageLines.push(Math.round(ry));
+          pageLines.push(Math.round(ry+rh));
+        }
+      }else{
+        for(let ci=0;ci<coords.length-3;ci+=2){
+          const x1=coords[ci],y1=coords[ci+1],x2=coords[ci+2],y2=coords[ci+3];
+          if(Math.abs(y1-y2)<2&&Math.abs(x2-x1)>200){
+            pageLines.push(Math.round(y1));
+          }
+        }
+      }
+    }
+    // Store lines for this page (deduplicated)
+    const uniqueLines=[...new Set(pageLines)].sort((a,b)=>b-a);
+    pageLineMap[p]=uniqueLines;
+
+    if(!globalCols){
+      const d=detectColumns(pageToks);
+      if(d&&d.obsMax>d.obsMin&&d.actMax>d.actMin&&d.tlMax>d.tlMin){
+        globalCols=d; detSrc=`auto (page ${p})`;
+      }
+    }
+
+    const obsTk=pageToks.find(tk=>/inspection\s*observation/i.test(tk.str)||/^observation$/i.test(tk.str));
+    pageHeaders.push({p,W,obsTk:obsTk||null});
+    allTokens.push(...pageToks);
+  }
+
+  let X;
+  if(globalCols){
+    X=globalCols;
+  }else{
+    const fb=FALLBACK[type]||FALLBACK.electrical;
+    const W=pageHeaders[0]?.W||1000;
+    X={itemNoMax:W*fb.itemNoMax,obsMin:W*fb.obsMin,obsMax:W*fb.obsMax,
+       actMin:W*fb.actMin,actMax:W*fb.actMax,tlMin:W*fb.tlMin,tlMax:W*fb.tlMax};
+  }
+
+  const findings =[];
+  const seenItems=new Set();
+
+  for(const{p,W,obsTk}of pageHeaders){
+    if(!obsTk)continue;
+    const obsY=obsTk.y;
+
+    const pageToks=allTokens.filter(tk=>tk.page===p);
+    const hdrBand =pageToks.filter(tk=>tk.y>obsY-32&&tk.y<=obsY+20);
+    // Compute hdrBottom only from proper header label tokens (len>=2 noise words).
+    // Single-char tokens like "1" (item numbers bleeding in) are excluded.
+    // Without this, data from the first item row pushes hdrBottom too low.
+    const hdrNoise=hdrBand.filter(tk=>tk.str.length>=2&&isNoise(tk.str));
+    const hdrBottom=hdrNoise.length?Math.min(...hdrNoise.map(tk=>tk.y)):
+                    hdrBand.length?Math.min(...hdrBand.map(tk=>tk.y)):obsY-30;
+
+    const dataFilt=pageToks.filter(tk=>tk.y<hdrBottom-2&&!isNoise(tk.str));
+    const dataAll =pageToks.filter(tk=>tk.y<hdrBottom-2);
+
+    const itemNums=dataAll
+      .filter(tk=>tk.x<X.itemNoMax&&/^\d+$/.test(tk.str))
+      .sort((a,b)=>b.y-a.y);
+
+    if(!itemNums.length)continue;
+
+    for(let i=0;i<itemNums.length;i++){
+      const{y:itemY,str:itemNo}=itemNums[i];
+      if(seenItems.has(itemNo))continue;
+      seenItems.add(itemNo);
+
+      const prevY=i===0?hdrBottom:itemNums[i-1].y;
+      const nextY=i+1<itemNums.length?itemNums[i+1].y:-Infinity;
+
+      // Use PDF horizontal rules as row separators when available — far more
+      // accurate than midpoints, especially for tall rows (e.g. item #7).
+      const lines=pageLineMap[p]||[];
+      // Find the H-line closest to yLow that still sits between yHigh and yLow.
+      // Direction-aware: the separator can be as close as 1px to either boundary.
+      // Old ±2 buffer was excluding valid separators sitting 1px above item numbers.
+      function nearestLineBetween(yHigh,yLow){
+        // Collect all lines strictly between yLow and yHigh (no buffer needed —
+        // the item number token itself is filtered out by seenItems / data filters)
+        const candidates=lines.filter(ly=>ly<yHigh&&ly>yLow);
+        if(!candidates.length)return null;
+        // Return the one closest to yLow (the separator just above the next item)
+        return candidates.reduce((best,ly)=>Math.abs(ly-yLow)<Math.abs(best-yLow)?ly:best);
+      }
+
+      // bandTop: use the rule just above itemY (between prevY and itemY)
+      let bandTop;
+      if(i===0){
+        bandTop=hdrBottom;
+      } else {
+        const rule=nearestLineBetween(prevY,itemY);
+        bandTop=rule!==null?rule+1:Math.min((itemY+prevY)/2,hdrBottom);
+      }
+
+      // bandBot: use the rule just below itemY (between itemY and nextY)
+      let bandBot;
+      if(i+1<itemNums.length){
+        const rule=nearestLineBetween(itemY,nextY);
+        bandBot=rule!==null?rule-1:(itemY+nextY)/2;
+      } else {
+        bandBot=nextY;
+      }
+
+      const band=dataFilt.filter(tk=>tk.y<bandTop&&tk.y>bandBot);
+
+      function field(xMin,xMax,filterFn){
+        const toks=band
+          .filter(tk=>tk.x>=xMin&&tk.x<xMax)
+          .filter(tk=>!filterFn||!filterFn(tk))
+          .sort((a,b)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x);
+        // Join tokens: if same Y-row, join with space; across rows also space.
+        // Then collapse any double spaces introduced by empty tokens.
+        return toks.map(tk=>tk.str).join(' ').replace(/\s+/g,' ').trim();
+      }
+
+      const observation=field(X.obsMin,X.obsMax);
+      const actionPlan =field(X.actMin,X.actMax);
+      // For timeline: exclude comment tokens that physically overlap the timeline x-range
+      const rawTimeline=field(X.tlMin,X.tlMax,tk=>isCommentToken(tk.str));
+      const timeline   =cleanTimeline(rawTimeline);
+
+      if(observation||actionPlan)
+        findings.push({itemNo,observation,actionPlan,timeline,rawTimeline});
+    }
+  }
+
+  findings.sort((a,b)=>parseInt(a.itemNo)-parseInt(b.itemNo));
+  return{findings,detectionSource:detSrc,detectedCols:globalCols};
+}
+// ============================================================
+// END STRUCTURAL & ELECTRICAL FROZEN SECTION
+// ============================================================
+
+
+// ============================================================
+// FIRE PDF EXTRACTOR — dedicated parser for the Fire report
+// format which has a unique column layout:
+//   Item No | Issue Type | Issue SubCat | Inspection Observation
+//   | Inspection Recommendation | Timeline given
+//   | Comments after Physical Inspection | Final Timeline
+//   | Final Action Plan | Status | Pictorial Evidence
+//
+// The generic extractTablePdf mis-detects columns on this format
+// because "Inspection Recommendation" appears at a similar x to
+// the other formats' "Inspection Action Plan", but the preceding
+// Issue Type / Sub-Category columns push everything rightward.
+// ============================================================
+async function extractFirePdf(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+
+  const allTokens=[];
+  const pageLineMap={};
+  let   detectedCols=null;
+
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const content=await page.getTextContent({normalizeWhitespace:false});
+    const pageToks=content.items
+      .map(it=>({x:it.transform[4],y:it.transform[5],str:(it.str||'').trim(),page:p,width:it.width||0}))
+      .filter(it=>it.str.length>0);
+
+    // Extract horizontal rules (row separators) — same logic as extractTablePdf
+    const ops=await page.getOperatorList();
+    const pageLines=[];
+    for(let oi=0;oi<ops.fnArray.length;oi++){
+      if(ops.fnArray[oi]!==pdfjsLib.OPS.constructPath)continue;
+      const args=ops.argsArray[oi];
+      if(!args)continue;
+      const coords=args[1];
+      if(!coords||!coords.length)continue;
+      if(coords.length===4){
+        const[rx,ry,rw,rh]=coords;
+        if(Math.abs(rh)<2&&Math.abs(rw)>200){
+          pageLines.push(Math.round(ry));
+          pageLines.push(Math.round(ry+rh));
+        }
+      }else{
+        for(let ci=0;ci<coords.length-3;ci+=2){
+          const x1=coords[ci],y1=coords[ci+1],x2=coords[ci+2],y2=coords[ci+3];
+          if(Math.abs(y1-y2)<2&&Math.abs(x2-x1)>200)pageLines.push(Math.round(y1));
+        }
+      }
+    }
+    pageLineMap[p]=[...new Set(pageLines)].sort((a,b)=>b-a);
+    allTokens.push(...pageToks);
+  }
+
+  // ── COLUMN DETECTION (Fire-specific) ──────────────────────────────────────
+  // The Fire PDF header row has these labels (may be split into separate tokens):
+  //   "Inspection Observation" | "Inspection Recommendation" | "Timeline given"
+  //   | "Comments after Physical Inspection" | "Final Timeline"
+  //
+  // pdfjs may split "Inspection Recommendation" into two tokens: "Inspection"
+  // at x=recX and "Recommendation" at x=recX+something, on the same or adjacent rows.
+  // We CANNOT use row-joining naively because "Inspection Observation" and
+  // "Inspection Recommendation" both start with "Inspection" and may appear on the
+  // same row — so finding the row and returning the leftmost "Inspection" x would
+  // give the Observation column for both.
+  //
+  // Strategy: scan all tokens for the SECOND WORD of each target phrase, then
+  // verify the preceding token on the same row starts with the first word.
+
+  const p1toks=allTokens.filter(tk=>tk.page===1);
+
+  // Group tokens by y-row (±4px bucket), sorted by x within each row
+  const yBucket=tk=>Math.round(tk.y/4)*4;
+  const rowByY={};
+  for(const tk of p1toks){
+    const k=yBucket(tk);
+    if(!rowByY[k])rowByY[k]=[];
+    rowByY[k].push(tk);
+  }
+  Object.values(rowByY).forEach(r=>r.sort((a,b)=>a.x-b.x));
+
+  // Find the x-position of a header by locating the second-word token,
+  // then confirming the previous token on the same row starts with the first word.
+  // Returns the x of the first word (i.e. the leftmost x of the header).
+  function findHeaderX2(word1, word2){
+    for(const tk of p1toks){
+      if(tk.str.toLowerCase().trim()!==word2)continue;
+      // Found second word — check same-row tokens for word1 to the left
+      const row=rowByY[yBucket(tk)]||[];
+      // Also check adjacent y-rows (multi-row header wrapping)
+      const adjRows=[rowByY[yBucket(tk)-4]||[], rowByY[yBucket(tk)+4]||[]];
+      for(const candidate of row){
+        if(candidate.x<tk.x&&candidate.str.toLowerCase().trim()===word1)return candidate.x;
+      }
+      for(const adjRow of adjRows){
+        for(const candidate of adjRow){
+          if(candidate.str.toLowerCase().trim()===word1){
+            // Is this candidate at roughly the same x as tk (same column)?
+            if(Math.abs(candidate.x-tk.x)<80)return candidate.x;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // Single-token exact match
+  function findHeaderX1(phrase){
+    for(const tk of p1toks){
+      if(tk.str.toLowerCase().replace(/\s+/g,' ').trim()===phrase)return tk.x;
+    }
+    return null;
+  }
+
+  // Find "Inspection Observation": the token "Observation" whose left neighbour is "Inspection"
+  const obsX = findHeaderX1('inspection observation')
+            ?? findHeaderX2('inspection','observation');
+
+  // Find "Inspection Recommendation": the token "Recommendation" whose left neighbour is "Inspection"
+  // Must be at a different x than obsX (i.e. not the Observation column)
+  let recX = findHeaderX1('inspection recommendation');
+  if(recX===null){
+    // Find ALL tokens with str="Recommendation" — pick the one whose left neighbour "Inspection"
+    // is NOT at the obsX position
+    for(const tk of p1toks){
+      if(tk.str.toLowerCase().trim()!=='recommendation')continue;
+      const row=rowByY[yBucket(tk)]||[];
+      for(const c of row){
+        if(c.x<tk.x&&c.str.toLowerCase().trim()==='inspection'&&(obsX===null||Math.abs(c.x-obsX)>20)){
+          recX=c.x; break;
+        }
+      }
+      if(recX!==null)break;
+      // Also check adjacent rows
+      for(const delta of[-4,4]){
+        const adjRow=rowByY[yBucket(tk)+delta]||[];
+        for(const c of adjRow){
+          if(c.str.toLowerCase().trim()==='inspection'&&(obsX===null||Math.abs(c.x-obsX)>20)){
+            recX=c.x; break;
+          }
+        }
+        if(recX!==null)break;
+      }
+      if(recX!==null)break;
+    }
+  }
+
+  // Find "Timeline given": single token or two-token
+  const tlX = findHeaderX1('timeline given')
+           ?? findHeaderX2('timeline','given');
+
+  // Find end-of-timeline-column markers
+  const cmtX    = findHeaderX1('comments after physical inspection')
+               ?? findHeaderX2('comments','after');
+  const finalTLX= findHeaderX1('final timeline')
+               ?? findHeaderX2('final','timeline');
+
+  // tlEndX = leftmost of Comments / Final Timeline column headers
+  const tlEndX=[cmtX,finalTLX].filter(v=>v!==null).reduce((a,b)=>Math.min(a,b),Infinity);
+
+  let X;
+  const W=p1toks.length?Math.max(...p1toks.map(tk=>tk.x+(tk.width||0))):841;
+  const _dbg={obsX,recX,tlX,cmtX,finalTLX,W};
+
+  if(obsX!==null&&recX!==null&&tlX!==null&&obsX<recX&&recX<tlX){
+    const itemNoMax = obsX - 8;
+    const tlMax = (tlEndX<Infinity&&tlEndX>tlX) ? tlEndX - 5 : tlX + 90;
+    X={
+      itemNoMax,
+      obsMin: obsX - 5,   obsMax: recX - 5,
+      actMin: recX - 5,   actMax: tlX  - 5,
+      tlMin:  tlX  - 5,   tlMax,
+      detSrc: `auto·fire obs=${Math.round(obsX)} rec=${Math.round(recX)} tl=${Math.round(tlX)} tlMax=${Math.round(tlEndX<Infinity?tlEndX:tlX+90)}`,
+    };
+    detectedCols={obsMin:X.obsMin,obsMax:X.obsMax,actMin:X.actMin,actMax:X.actMax,tlMin:X.tlMin,tlMax:X.tlMax};
+  } else {
+    // Fallback: use page-width fractions calibrated for Fire PDF landscape layout.
+    // From known Taufiq data: page ~841px wide at scale=1.
+    // Item col ~36px, Issue Type ~56px, Issue SubCat ~91px,
+    // Observation ~141px, Recommendation ~331px,
+    // Timeline given ~511px, Comments ~581px, Final Timeline ~681px
+    const fw=W||841;
+    X={
+      itemNoMax: fw*0.158,
+      obsMin:    fw*0.160, obsMax: fw*0.390,
+      actMin:    fw*0.393, actMax: fw*0.600,
+      tlMin:     fw*0.603, tlMax:  fw*0.678,
+      detSrc: `fallback·fire W=${Math.round(fw)} dbg:obs=${obsX} rec=${recX} tl=${tlX}`,
+    };
+  }
+
+  // ── PARSE PAGES ───────────────────────────────────────────────────────────
+  const findings=[];
+  const seenItems=new Set();
+
+  // Group tokens by page and find obs header per page
+  const pages=[...new Set(allTokens.map(tk=>tk.page))];
+  for(const p of pages){
+    const pageToks=allTokens.filter(tk=>tk.page===p);
+    const obsTk=pageToks.find(tk=>/^inspection\s*observation$/i.test(tk.str.trim()));
+    if(!obsTk)continue;
+
+    const obsY=obsTk.y;
+    // Header band: tokens near the obs header row
+    const hdrBand=pageToks.filter(tk=>tk.y>obsY-40&&tk.y<=obsY+10);
+    const hdrNoise=hdrBand.filter(tk=>tk.str.length>=2&&isNoise(tk.str));
+    const hdrBottom=hdrNoise.length ? Math.min(...hdrNoise.map(tk=>tk.y))
+                  : hdrBand.length  ? Math.min(...hdrBand.map(tk=>tk.y))
+                  : obsY - 30;
+
+    const dataAll =pageToks.filter(tk=>tk.y<hdrBottom-2);
+    const dataFilt=dataAll.filter(tk=>!isNoise(tk.str));
+
+    // Item numbers: left of obs column, numeric only
+    const itemNums=dataAll
+      .filter(tk=>tk.x<X.itemNoMax&&/^\d+$/.test(tk.str))
+      .sort((a,b)=>b.y-a.y);
+
+    if(!itemNums.length)continue;
+
+    const lines=pageLineMap[p]||[];
+    function nearestLineBetween(yHigh,yLow){
+      const cands=lines.filter(ly=>ly<yHigh&&ly>yLow);
+      if(!cands.length)return null;
+      return cands.reduce((best,ly)=>Math.abs(ly-yLow)<Math.abs(best-yLow)?ly:best);
+    }
+
+    for(let i=0;i<itemNums.length;i++){
+      const{y:itemY,str:itemNo}=itemNums[i];
+      if(seenItems.has(itemNo))continue;
+      seenItems.add(itemNo);
+
+      const prevY=i===0?hdrBottom:itemNums[i-1].y;
+      const nextY=i+1<itemNums.length?itemNums[i+1].y:-Infinity;
+
+      let bandTop;
+      if(i===0){
+        bandTop=hdrBottom;
+      }else{
+        const rule=nearestLineBetween(prevY,itemY);
+        bandTop=rule!==null?rule+1:Math.min((itemY+prevY)/2,hdrBottom);
+      }
+      let bandBot;
+      if(i+1<itemNums.length){
+        const rule=nearestLineBetween(itemY,nextY);
+        bandBot=rule!==null?rule-1:(itemY+nextY)/2;
+      }else{
+        bandBot=nextY;
+      }
+
+      const band=dataFilt.filter(tk=>tk.y<bandTop&&tk.y>bandBot);
+
+      function field(xMin,xMax){
+        return band
+          .filter(tk=>tk.x>=xMin&&tk.x<xMax)
+          .sort((a,b)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x)
+          .map(tk=>tk.str).join(' ').replace(/\s+/g,' ').trim();
+      }
+      // Timeline column: also exclude comment tokens (On DD/MM/...) that bleed in
+      function fieldFiltered(xMin,xMax){
+        return band
+          .filter(tk=>tk.x>=xMin&&tk.x<xMax&&!isCommentToken(tk.str))
+          .sort((a,b)=>Math.abs(b.y-a.y)>2?b.y-a.y:a.x-b.x)
+          .map(tk=>tk.str).join(' ').replace(/\s+/g,' ').trim();
+      }
+
+      const observation = field(X.obsMin, X.obsMax);
+      const actionPlan  = field(X.actMin, X.actMax);
+      const rawTimeline = fieldFiltered(X.tlMin, X.tlMax);
+      const timeline    = rawTimeline.trim();
+
+      if(observation||actionPlan)
+        findings.push({itemNo,observation,actionPlan,timeline,rawTimeline});
+    }
+  }
+
+  findings.sort((a,b)=>parseInt(a.itemNo)-parseInt(b.itemNo));
+  return{findings,detectionSource:X.detSrc||'fire',detectedCols};
+}
+// ============================================================
+// END FIRE PDF EXTRACTOR
+// ============================================================
+
+
+// ============================================================
+// SHARED — UI, Excel, Analysis, Rendering
+// ============================================================
 const TYPES=['boiler','electrical','structural','fire'];
 const SHEET_KW={boiler:['boiler'],electrical:['electrical'],structural:['structural'],fire:['fire']};
 const IDS={
   boiler:    {card:'cb',input:'pb',lbl:'lb',sub:'sb'},
   electrical:{card:'ce',input:'pe',lbl:'le',sub:'se'},
   structural:{card:'cs',input:'ps',lbl:'ls',sub:'ss'},
-  fire:      {card:'cf',input:'pf',lbl:'lf',sub:'sf'}
+  fire:      {card:'cf',input:'pf',lbl:'lf',sub:'sf'},
 };
 const pdfFiles={};let xlsFile=null;
 
@@ -222,140 +878,18 @@ function setP(pct,lbl,step){
   if(step!==undefined)document.getElementById('pstep').textContent=step;
 }
 
-// ── PDF text extraction with X-column grouping ──
-// Groups text items by: (1) item rows using itemNo column, (2) field columns using x ranges
-async function extractTablePdf(file, type){
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-  const items = [];
-  const seen = new Set();
-  let cfg = null; // auto-detected once from first page with header
-
-  for(let p=1; p<=pdf.numPages; p++){
-    const page = await pdf.getPage(p);
-    const vp = page.getViewport({scale:1});
-    const W = vp.width;
-
-    const content = await page.getTextContent({normalizeWhitespace:false});
-    const textItems = content.items.map(item=>({
-      x: item.transform[4],
-      y: item.transform[5],
-      str: item.str
-    })).filter(it=>it.str.trim());
-
-    // Auto-detect column bounds from header keywords (once per PDF)
-    if(!cfg){
-      cfg = detectColBounds(textItems, W, type);
-    }
-
-    // Group by y (cluster within 3pt = same line)
-    const lineMap = {};
-    textItems.forEach(it=>{
-      const key = Math.round(it.y / 3) * 3;
-      if(!lineMap[key]) lineMap[key]=[];
-      lineMap[key].push(it);
-    });
-    const ys = Object.keys(lineMap).map(Number).sort((a,b)=>b-a);
-
-    // Find rows where itemNo column has a digit
-    const itemLines = [];
-    ys.forEach(y=>{
-      const hit = lineMap[y].find(it=>
-        it.x >= cfg.itemNo[0] && it.x < cfg.itemNo[1] &&
-        /^\d+$/.test(it.str.trim())
-      );
-      if(hit) itemLines.push({y, itemNo: hit.str.trim()});
-    });
-
-    // For each item gather text from all lines until next item
-    for(let ii=0; ii<itemLines.length; ii++){
-      const {y: itemY, itemNo} = itemLines[ii];
-      if(seen.has(itemNo)) continue;
-      seen.add(itemNo);
-
-      const nextY = ii+1 < itemLines.length ? itemLines[ii+1].y : -Infinity;
-
-      const allItems = ys
-        .filter(y => y <= itemY && y > nextY)
-        .flatMap(y => lineMap[y]);
-
-      const getField = (xmin, xmax) =>
-        allItems
-          .filter(it => it.x >= xmin && it.x < xmax)
-          .sort((a,b) => b.y - a.y || a.x - b.x)
-          .map(it => it.str.trim())
-          .filter(Boolean)
-          .join(' ');
-
-      items.push({
-        itemNo,
-        observation: getField(cfg.obs[0],      cfg.obs[1]),
-        actionPlan:  getField(cfg.action[0],   cfg.action[1]),
-        timeline:    getField(cfg.timeline[0],  cfg.timeline[1]),
-        status:      getField(cfg.status[0],    cfg.status[1])
-      });
-    }
-  }
-
-  items.sort((a,b)=>parseInt(a.itemNo)-parseInt(b.itemNo));
-  return items;
-}
-
-// ── Boiler card parser (text layer) ──
-async function extractBoilerPdf(file){
-  const buf=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
-  let out='';
-  for(let p=1;p<=pdf.numPages;p++){
-    const page=await pdf.getPage(p);
-    const content=await page.getTextContent({normalizeWhitespace:true});
-    let lastY=null,pageText='';
-    content.items.forEach(item=>{
-      const y=Math.round(item.transform[5]);
-      if(lastY!==null&&Math.abs(y-lastY)>2)pageText+='\n';
-      pageText+=item.str;
-      if(item.hasEOL)pageText+='\n';
-      lastY=y;
-    });
-    out+=pageText+'\n';
-  }
-
-  const findings=[];
-  const re=/FINDING\s*NO\s*:?\s*([A-Z])\s*-\s*(\d+)/gi;
-  const positions=[];let m;
-  while((m=re.exec(out))!==null)positions.push({idx:m.index,itemNo:m[2]});
-
-  positions.forEach((pos,i)=>{
-    const end=i+1<positions.length?positions[i+1].idx:Math.min(pos.idx+3000,out.length);
-    const block=out.slice(pos.idx,end);
-    const fm=block.match(/FINDING\s*:\s*([\s\S]*?)(?=RECOMMENDATION\s*:|PRIORITY\s*:|REMEDIATION)/i);
-    const rm=block.match(/RECOMMENDATION\s*:\s*([\s\S]*?)(?=PRIORITY\s*:|REMEDIATION|FINDING\s*NO)/i);
-    const tm=block.match(/REMEDIATION\s*TIME\s*[\r\n]+([^\r\n]+)[\r\n]+FRAME/i);
-    const tm2=!tm&&block.match(/REMEDIATION\s*TIME\s*FRAME\s*:?\s*([^\r\n]+)/i);
-    const clean=s=>s.replace(/FINDING\s*NO\s*:?\s*[A-Z]-\d+/gi,'').replace(/CATEGORY\s*:.*$/mi,'').replace(/BOILER\s*REGISTRATION\s*NO\s*:.*$/mi,'').replace(/\s+/g,' ').trim();
-    const obs=clean(fm?fm[1]:'');
-    const act=clean(rm?rm[1]:'');
-    const tl=(tm?tm[1]:tm2?tm2[1]:'').trim();
-    if((obs||act)&&!findings.find(f=>f.itemNo===pos.itemNo))
-      findings.push({itemNo:pos.itemNo,observation:obs,actionPlan:act,timeline:tl});
-  });
-  findings.sort((a,b)=>parseInt(a.itemNo)-parseInt(b.itemNo));
-  return findings;
-}
-
-// ── Excel parser ──
 function parseExcelSheet(wb,type){
-  const sheetName=wb.SheetNames.find(s=>s.toLowerCase()===type)||
+  const sn=wb.SheetNames.find(s=>s.toLowerCase()===type)||
     wb.SheetNames.find(s=>SHEET_KW[type].some(k=>s.toLowerCase().includes(k)))||null;
-  if(!sheetName)return{sheetName:null,rows:[],headerRow:null};
-  const ws=wb.Sheets[sheetName];
+  if(!sn)return{sheetName:null,rows:[]};
+  const ws=wb.Sheets[sn];
   const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
   let hIdx=-1;
   for(let i=0;i<Math.min(raw.length,30);i++){
     const rs=raw[i].join(' ').toLowerCase();
     if(rs.includes('item no')||rs.includes('inspection observation')){hIdx=i;break;}
   }
-  if(hIdx===-1)return{sheetName,rows:[],headerRow:null};
+  if(hIdx===-1)return{sheetName:sn,rows:[]};
   const headers=raw[hIdx].map(h=>(h||'').toString().trim());
   const rows=[];
   for(let i=hIdx+1;i<raw.length;i++){
@@ -363,25 +897,163 @@ function parseExcelSheet(wb,type){
     if(!row.some(c=>c!==''))continue;
     const obj={};
     headers.forEach((h,j)=>{if(h)obj[h]=(row[j]||'').toString().trim();});
-    if(obj['Item No']||obj['item no'])rows.push(obj);
+    if(getItemNo(obj))rows.push(obj);
   }
-  return{sheetName,rows,headerRow:hIdx+1};
+  return{sheetName:sn,rows};
 }
+
 function colVal(row,kws){
   for(const k of Object.keys(row)){
     const n=k.toLowerCase().replace(/[\s_]+/g,' ').trim();
     if(kws.some(kw=>n.includes(kw)))return(row[k]||'').toString().trim();
   }
-  return '';
+  return'';
 }
+// Normalize text for comparison: collapse whitespace, trim
+function norm(s){return(s||'').replace(/[\s\u00A0\u200B\r\n\t]+/g,' ').trim();}
+
+// ── DATE NORMALISATION ────────────────────────────────────────────────────────
+// PDF dates: "06-Aug-2015"  |  Excel dates: "Aug  6 2015" or JS Date objects
+// Both are normalised to "YYYY-MM-DD" before comparison so format differences
+// don't cause false mismatches. Falls back to plain norm() if unparseable.
+const MONTHS={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+              jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+function normDate(s){
+  if(!s)return'';
+  const raw=(s||'').toString().replace(/[\s\u00A0\u200B\r\n\t]+/g,' ').trim();
+  if(!raw)return'';
+  // Format 1 — PDF style: "06-Aug-2015"  or "06-Aug-15"
+  const m1=raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+  if(m1){
+    const mo=MONTHS[m1[2].toLowerCase()];
+    if(mo){
+      const yr=m1[3].length===2?'20'+m1[3]:m1[3];
+      return`${yr}-${mo}-${m1[1].padStart(2,'0')}`;
+    }
+  }
+  // Format 2 — Excel rendered: "Aug  6 2015"  /  "Feb 29 2024"
+  const m2=raw.match(/^([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})$/);
+  if(m2){
+    const mo=MONTHS[m2[1].toLowerCase()];
+    if(mo)return`${m2[3]}-${mo}-${m2[2].padStart(2,'0')}`;
+  }
+  // Format 3 — ISO or numeric: "2015-08-06"
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+  // Unparseable — fall back to whitespace-normalised string
+  return raw.toLowerCase();
+}
+// Compare two date-or-text strings; dates matched semantically, text matched literally
+function normForCompare(s){
+  const d=normDate(s);
+  // If it parsed to YYYY-MM-DD, use that; otherwise use plain norm
+  return/^\d{4}-\d{2}-\d{2}$/.test(d)?d:norm(s);
+}
+
 const getItemNo  =r=>colVal(r,['item no','item number']);
 const getObs     =r=>colVal(r,['inspection observation','observation']);
-const getAction  =r=>colVal(r,['inspection action plan','action plan']);
-const getTimeline=r=>colVal(r,['inspection timeline']);
+const getAction  =r=>colVal(r,['inspection action plan','action plan','inspection recommendation','recommendation']);
+const getTimeline=r=>colVal(r,['inspection timeline','timeline given']);
 const getStatus  =r=>colVal(r,['progress status','status']);
 const getFinalTL =r=>colVal(r,['final timeline','final  timeline']);
 
-// ── Main ──
+// ============================================================
+// DEBUG — dumps raw tokens from page 1 so we can see exact x,y of headers
+// ============================================================
+async function debugPdf(){
+  const f=pdfFiles['fire']||pdfFiles['structural']||pdfFiles['electrical']||pdfFiles['boiler'];
+  if(!f){alert('Upload a PDF first');return;}
+  const buf=await f.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  const SEP='='.repeat(72);
+
+  for(let pg=1;pg<=Math.min(pdf.numPages,2);pg++){
+    const page=await pdf.getPage(pg);
+    const vp=page.getViewport({scale:1});
+    const W=vp.width,H=vp.height;
+    const ct=await page.getTextContent({normalizeWhitespace:false});
+    const toks=ct.items
+      .map(it=>({x:Math.round(it.transform[4]),y:Math.round(it.transform[5]),str:(it.str||'').trim(),w:Math.round(it.width||0)}))
+      .filter(it=>it.str.length>0)
+      .sort((a,b)=>b.y-a.y||a.x-b.x);
+
+    out+=SEP+'\nPAGE '+pg+': '+Math.round(W)+'x'+Math.round(H)+'\n'+SEP+'\n';
+
+    if(pg===1){
+      // Show ALL tokens in the header region (top 25% of page by y, i.e. y > H*0.75 in PDF coords)
+      const headerThreshold = H * 0.70;
+      const headerToks = toks.filter(tk=>tk.y > headerThreshold);
+      out += 'ALL HEADER TOKENS (y > '+Math.round(headerThreshold)+'):\n';
+      headerToks.forEach(tk=>{
+        out += '  y='+tk.y+' x='+tk.x+' w='+tk.w+' "'+tk.str+'"\n';
+      });
+      out += '\n';
+
+      // Fire-specific detection
+      out += 'FIRE COLUMN DETECTION:\n';
+      // Group by y-row bucket
+      const rowMap={};
+      for(const tk of toks){
+        const ry=Math.round(tk.y/3)*3;
+        if(!rowMap[ry])rowMap[ry]=[];
+        rowMap[ry].push(tk);
+      }
+      const rows=Object.entries(rowMap)
+        .map(([ry,rtks])=>({y:Number(ry),str:rtks.slice().sort((a,b)=>a.x-b.x).map(t=>t.str).join(' ').toLowerCase().trim(),tks:rtks.slice().sort((a,b)=>a.x-b.x)}))
+        .sort((a,b)=>b.y-a.y);
+      rows.slice(0,20).forEach(r=>{
+        const hit=['inspection observation','inspection recommendation','timeline given','comments after physical','final timeline'].some(p=>r.str.includes(p));
+        if(hit||r.y>H*0.70) out+='  ROW y='+r.y+': "'+r.str.slice(0,120)+'"\n';
+      });
+      out+='\n';
+    }
+
+    const cols=detectColumns(toks);
+    if(cols){
+      out+='GENERIC detectColumns result:\n';
+      out+='  itemNoMax='+cols.itemNoMax.toFixed(0)+'\n';
+      out+='  obs:  x '+cols.obsMin.toFixed(0)+' - '+cols.obsMax.toFixed(0)+'\n';
+      out+='  act:  x '+cols.actMin.toFixed(0)+' - '+cols.actMax.toFixed(0)+'\n';
+      out+='  tl:   x '+cols.tlMin.toFixed(0)+' - '+cols.tlMax.toFixed(0)+'\n';
+    } else {
+      out+='GENERIC detectColumns FAILED\n';
+      for(const tk of toks){
+        const s=tk.str.toLowerCase().replace(/\s+/g,' ').trim();
+        if(s==='inspection observation'||s==='observation') out+='  OBS?  y='+tk.y+' x='+tk.x+' "'+tk.str+'"\n';
+        if(s.startsWith('action plan')||s.startsWith('inspection action plan')||s.startsWith('inspection recommendation')||s.startsWith('recommendation')) out+='  ACT?  y='+tk.y+' x='+tk.x+' "'+tk.str+'"\n';
+        if(s.startsWith('timeline from')||s==='timeline'||s==='timeline given') out+='  TL?   y='+tk.y+' x='+tk.x+' "'+tk.str+'"\n';
+        if(s.startsWith('comments after')||s.startsWith('inspection comments')||s.startsWith('final timeline')) out+='  END?  y='+tk.y+' x='+tk.x+' "'+tk.str+'"\n';
+      }
+    }
+    out+='\n';
+
+    const obsTk=toks.find(tk=>/inspection\s*observation/i.test(tk.str)||/^observation$/i.test(tk.str));
+    if(obsTk){
+      const obsY=obsTk.y;
+      const hdrBand=toks.filter(tk=>tk.y>obsY-32&&tk.y<=obsY+20);
+      const hdrBottom=hdrBand.length?Math.min(...hdrBand.map(tk=>tk.y)):obsY-30;
+      out+='obsTk: y='+obsY+' x='+obsTk.x+' "'+obsTk.str+'"\n';
+      out+='hdrBottom: '+hdrBottom+'\n';
+      const itemNoMax=cols?cols.itemNoMax:120;
+      const dataAll=toks.filter(tk=>tk.y<hdrBottom-2);
+      const items=dataAll.filter(tk=>tk.x<itemNoMax&&/^\d+$/.test(tk.str)).sort((a,b)=>b.y-a.y);
+      out+='Item numbers (itemNoMax='+Math.round(itemNoMax)+'):\n';
+      if(items.length===0) out+='  NONE FOUND\n';
+      items.slice(0,5).forEach(tk=>{out+='  #'+tk.str+' at y='+tk.y+' x='+tk.x+'\n';});
+    } else {
+      out+='No obsTk found on page '+pg+'\n';
+    }
+    out+='\n';
+  }
+
+  const el=document.getElementById('debugOut');
+  el.textContent=out;
+  el.style.display='block';
+}
+
+// Persists manual "Accept as match" overrides across re-analyses
+const acceptedOverrides=new Set();
+
 async function runAnalysis(){
   document.getElementById('analyzeBtn').disabled=true;
   document.getElementById('progWrap').style.display='block';
@@ -395,54 +1067,93 @@ async function runAnalysis(){
 
   for(let ti=0;ti<typeList.length;ti++){
     const type=typeList[ti];
-    setP(Math.round(ti/typeList.length*85),`Parsing ${type} PDF...`,`Extracting findings`);
-
-    let findings=[];
+    setP(Math.round(ti/typeList.length*85),`Parsing ${type} PDF...`,`Auto-detecting columns...`);
+    let findings=[],detectionSource='N/A',detectedCols=null;
     try{
       if(type==='boiler'){
         findings=await extractBoilerPdf(pdfFiles[type]);
-      } else {
-        findings=await extractTablePdf(pdfFiles[type],type);
+        detectionSource='card format';
+      }else if(type==='fire'){
+        const r=await extractFirePdf(pdfFiles[type]);
+        findings=r.findings;detectionSource=r.detectionSource;detectedCols=r.detectedCols;
+      }else{
+        const r=await extractTablePdf(pdfFiles[type],type);
+        findings=r.findings;detectionSource=r.detectionSource;detectedCols=r.detectedCols;
       }
     }catch(e){console.error(type,e);}
 
     setP(Math.round((ti+0.7)/typeList.length*85),`Comparing ${type}...`,`${findings.length} items found`);
-
-    const {sheetName,rows,headerRow}=parseExcelSheet(wb,type);
+    const{sheetName,rows}=parseExcelSheet(wb,type);
     const items=[];
 
-    findings.forEach(f=>{
+    // If PDF produced 0 findings, skip comparison entirely — PDF likely not parseable
+    // or wrong file uploaded. Don't mark all Excel rows as "NOT IN PDF".
+    if(!findings.length){
+      allResults[type]={items:[],sheetName,pdfCount:0,xlsCount:rows.length,
+        sample:null,detectionSource,detectedCols,pdfParseFailure:true};
+      continue;
+    }
+
+    // ── EXCEL-DRIVEN LOOP ──────────────────────────────────────────────────────
+    // We iterate Excel rows (the document that needs correcting).
+    // For each row we look up the matching PDF finding (the truth).
+    // Discrepancies are always presented as "Excel is wrong, PDF is correct".
+    rows.forEach(r=>{
+      const ino=getItemNo(r).trim();
+      if(!ino)return;
+      const xlsObs=getObs(r),xlsAct=getAction(r),xlsTL=getTimeline(r);
+      const xlsStat=getStatus(r),xlsFinalTL=getFinalTL(r);
+      const pdfF=findings.find(f=>f.itemNo===ino);
+
+      if(!pdfF){
+        // Excel has a row with no PDF counterpart — flag as "Not in PDF"
+        items.push({itemNo:ino,status:'nopdf',pdf:null,xls:r,
+          xlsObs,xlsAct,xlsTL,xlsStat,xlsFinalTL,discs:[]});
+        totExtra++;
+        return;
+      }
+
       totPdf++;
-      const xlsRow=rows.find(r=>getItemNo(r).toString().trim()===f.itemNo.toString().trim());
-      if(!xlsRow){items.push({itemNo:f.itemNo,status:'missing',pdf:f,xls:null,discs:[]});totMissing++;return;}
-      const xlsObs=getObs(xlsRow),xlsAct=getAction(xlsRow),xlsTL=getTimeline(xlsRow);
-      const xlsStat=getStatus(xlsRow),xlsFinalTL=getFinalTL(xlsRow);
       const discs=[];
-      if(f.observation!==xlsObs) discs.push({field:'Inspection Observation',pdf:f.observation,xls:xlsObs});
-      if(f.actionPlan!==xlsAct)  discs.push({field:'Inspection Action Plan', pdf:f.actionPlan, xls:xlsAct});
-      if(f.timeline!==xlsTL)     discs.push({field:'Inspection Timeline',     pdf:f.timeline,   xls:xlsTL});
-      const entry={itemNo:f.itemNo,pdf:f,xls:xlsRow,xlsObs,xlsAct,xlsTL,xlsStat,xlsFinalTL,discs};
-      if(!discs.length){entry.status='match';totMatch++;}else{entry.status='mismatch';totMismatch++;}
+      // Compare: PDF is authoritative. If they differ, Excel is wrong.
+      // normForCompare() handles date format differences (PDF: "06-Aug-2015" vs Excel: "Aug  6 2015")
+      if(normForCompare(pdfF.observation)!==normForCompare(xlsObs))
+        discs.push({field:'Inspection Observation',correctVal:pdfF.observation,xlsVal:xlsObs});
+      if(normForCompare(pdfF.actionPlan) !==normForCompare(xlsAct))
+        discs.push({field:'Inspection Action Plan', correctVal:pdfF.actionPlan, xlsVal:xlsAct});
+      if(normForCompare(pdfF.timeline)   !==normForCompare(xlsTL))
+        discs.push({field:'Inspection Timeline',    correctVal:pdfF.timeline,   xlsVal:xlsTL});
+      // Also compare Final Timeline — PDF "dd-mmm-yyyy" vs Excel date object
+      // Only flag if both sides are non-empty (Final Timeline is optional in PDF)
+      const pdfFinalTL=pdfF.finalTimeline||'';
+      if(pdfFinalTL&&xlsFinalTL&&normForCompare(pdfFinalTL)!==normForCompare(xlsFinalTL))
+        discs.push({field:'Final Timeline',correctVal:pdfFinalTL,xlsVal:xlsFinalTL});
+
+      const overrideKey=type+'_'+ino;
+      const entry={itemNo:ino,pdf:pdfF,xls:r,xlsObs,xlsAct,xlsTL,xlsStat,xlsFinalTL,discs,overrideKey};
+      if(!discs.length||acceptedOverrides.has(overrideKey)){entry.status='match';totMatch++;}
+      else{entry.status='mismatch';totMismatch++;}
       items.push(entry);
     });
 
-    rows.forEach(r=>{
-      const ino=getItemNo(r).toString().trim();
-      if(ino&&!findings.find(f=>f.itemNo===ino)){
-        items.push({itemNo:ino,status:'extra',pdf:null,xls:r,
-          xlsObs:getObs(r),xlsAct:getAction(r),xlsTL:getTimeline(r),
-          xlsStat:getStatus(r),xlsFinalTL:getFinalTL(r),discs:[]});
-        totExtra++;
+    // PDF findings with no Excel row — need to be added to Excel
+    findings.forEach(f=>{
+      if(!rows.find(r=>getItemNo(r).trim()===f.itemNo)){
+        items.push({itemNo:f.itemNo,status:'missing',pdf:f,xls:null,discs:[]});
+        totMissing++;
       }
     });
 
-    allResults[type]={items,sheetName,pdfCount:findings.length,xlsCount:rows.length,headerRow,
-      sample:findings[0]||null};
+    // Sort all items by item number
+    items.sort((a,b)=>parseInt(a.itemNo)-parseInt(b.itemNo));
+
+    allResults[type]={items,sheetName,pdfCount:findings.length,xlsCount:rows.length,
+      sample:findings[0]||null,detectionSource,detectedCols};
     await new Promise(r=>setTimeout(r,10));
   }
 
   setP(100,'Complete!','');
-  setTimeout(()=>{document.getElementById('progWrap').style.display='none';},400);
+  setTimeout(()=>document.getElementById('progWrap').style.display='none',400);
   renderResults({allResults,totPdf,totMatch,totMismatch,totMissing,totExtra});
   document.getElementById('analyzeBtn').disabled=false;
   document.getElementById('analyzeBtn').textContent='Re-analyze';
@@ -450,15 +1161,177 @@ async function runAnalysis(){
   document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+// ============================================================
+// MANUAL OVERRIDE
+// ============================================================
+function acceptOverride(key){
+  acceptedOverrides.add(key);
+  const card=document.getElementById('ic-'+key);
+  if(card){
+    card.classList.remove('mm');
+    card.classList.add('match');
+    card.querySelector('.bg').className='bg bgok';
+    card.querySelector('.bg').textContent='✓ ACCEPTED';
+    card.querySelectorAll('.diff-pdf,.diff-xls').forEach(el=>{
+      el.style.opacity='0.4';
+    });
+    const btn=card.querySelector('button');
+    if(btn){btn.textContent='↩ Undo';btn.onclick=()=>undoOverride(key);}
+  }
+  // Update summary counts live
+  updateSummaryCounts();
+}
+function undoOverride(key){
+  acceptedOverrides.delete(key);
+  const card=document.getElementById('ic-'+key);
+  if(card){
+    card.classList.remove('match');
+    card.classList.add('mm');
+    card.querySelector('.bg').className='bg bgm';
+    card.querySelector('.bg').textContent='MISMATCH';
+    card.querySelectorAll('.diff-pdf,.diff-xls').forEach(el=>{
+      el.style.opacity='1';
+    });
+    const btn=card.querySelector('button');
+    if(btn){btn.textContent='✓ Accept as Match';btn.onclick=()=>acceptOverride(key);}
+  }
+  updateSummaryCounts();
+}
+function updateSummaryCounts(){
+  let totMatch=0,totMismatch=0,totMissing=0,totExtra=0;
+  totMatch   =document.querySelectorAll('.ic.match').length;
+  totMismatch=document.querySelectorAll('.ic.mm').length;
+  totMissing =document.querySelectorAll('.ic.ms').length;
+  totExtra   =document.querySelectorAll('.ic.ex').length;
+  const totPdf=totMatch+totMismatch+totMissing;
+  const rate=totPdf?Math.round(totMatch/totPdf*100):0;
+  const mvs=document.querySelectorAll('.met .v');
+  if(mvs.length>=6){
+    mvs[0].textContent=totPdf;
+    mvs[1].textContent=totMatch;
+    mvs[1].className='v cg';
+    mvs[2].textContent=totMismatch;
+    mvs[2].className='v cr';
+    mvs[3].textContent=totMissing;
+    mvs[4].textContent=totExtra;
+    mvs[5].textContent=rate+'%';
+    mvs[5].className='v '+(rate>=90?'cg':rate>=70?'ca':'cr');
+  }
+}
+
+// ============================================================
+// SUMMARY LOG
+// ============================================================
+function generateLog(allResults,totPdf,totMatch,totMismatch,totMissing,totExtra){
+  const pad=(s,n)=>(s+'').padEnd(n);
+  const LINE='─'.repeat(72);
+  const THIN='·'.repeat(72);
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const rate=totPdf?Math.round(totMatch/totPdf*100):0;
+
+  const STATUS_LABEL={
+    match:     '✓ CORRECT      ',
+    mismatch:  '✗ UPDATE EXCEL ',
+    missing:   '+ ADD TO EXCEL ',
+    nopdf:     '? NOT IN PDF   ',
+  };
+
+  let log='';
+  log+=`INSPECTION REPORT COMPARISON — SUMMARY LOG\n`;
+  log+=`Generated : ${dateStr}  ${timeStr}\n`;
+  log+=LINE+'\n';
+  log+=`Excel rows checked : ${totPdf}\n`;
+  log+=`✓ Correct          : ${totMatch}\n`;
+  log+=`✗ Needs update     : ${totMismatch}\n`;
+  log+=`+ Missing in Excel : ${totMissing}\n`;
+  log+=`? Not in PDF       : ${totExtra}\n`;
+  log+=`Excel accuracy     : ${rate}%\n`;
+  log+=LINE+'\n\n';
+
+  Object.keys(allResults).forEach(type=>{
+    const r=allResults[type];
+    const section=type.toUpperCase();
+    log+=`${'▌ '+section+' '+'▌'.padStart(68-section.length,'─')}\n`;
+    log+=`  Sheet: ${r.sheetName||'NOT FOUND'}   PDF items: ${r.pdfCount}   Excel rows: ${r.xlsCount}\n`;
+    if(r.pdfParseFailure){
+      log+=`  ⚠ PDF parse produced 0 items — comparison skipped for this type\n\n`;
+      return;
+    }
+    log+=THIN+'\n';
+
+    if(!r.items||r.items.length===0){
+      log+=`  (no items)\n`;
+    } else {
+      r.items.forEach(item=>{
+        const lbl=STATUS_LABEL[item.status]||'  UNKNOWN        ';
+        log+=`  ${lbl}  Item #${pad(item.itemNo,4)}`;
+        if(item.status==='mismatch'){
+          const fields=item.discs.map(d=>d.field.replace('Inspection ','')).join(', ');
+          log+=`  ↳ Fields differ: ${fields}\n`;
+          // Show old vs new for each differing field
+          item.discs.forEach(d=>{
+            const shortField=d.field.replace('Inspection ','');
+            const correct=(d.correctVal||'(empty)').replace(/\s+/g,' ').trim();
+            const wrong  =(d.xlsVal   ||'(empty)').replace(/\s+/g,' ').trim();
+            const MAXLEN=90;
+            const trimmed=s=>s.length>MAXLEN?s.slice(0,MAXLEN)+'…':s;
+            log+=`\n      [${shortField}]\n`;
+            log+=`      PDF (correct) : ${trimmed(correct)}\n`;
+            log+=`      Excel (wrong) : ${trimmed(wrong)}\n`;
+          });
+          log+='\n';
+        } else if(item.status==='missing'){
+          const obs=(item.pdf?.observation||'').replace(/\s+/g,' ').trim();
+          log+=`\n      Observation : ${obs.length>90?obs.slice(0,90)+'…':obs}\n\n`;
+        } else {
+          log+='\n';
+        }
+      });
+    }
+    log+='\n';
+  });
+
+  log+=LINE+'\n';
+  log+=`END OF LOG\n`;
+  return log;
+}
+
+function copyLog(){
+  const ta=document.getElementById('summaryLog');
+  ta.select();
+  ta.setSelectionRange(0,999999);
+  navigator.clipboard.writeText(ta.value).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.textContent='✓ Copied!';
+    btn.style.background='var(--gbg)';
+    btn.style.color='var(--gtxt)';
+    btn.style.borderColor='var(--green)';
+    setTimeout(()=>{
+      btn.textContent='📋 Copy to Clipboard';
+      btn.style.background='#fff';
+      btn.style.color='var(--purple)';
+      btn.style.borderColor='var(--purple)';
+    },2000);
+  }).catch(()=>{
+    // fallback for older browsers
+    document.execCommand('copy');
+  });
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
 function renderResults({allResults,totPdf,totMatch,totMismatch,totMissing,totExtra}){
   const rate=totPdf?Math.round(totMatch/totPdf*100):0;
   document.getElementById('sg').innerHTML=`
-    <div class="met"><div class="v">${totPdf}</div><div class="l">PDF items</div></div>
-    <div class="met"><div class="v cg">${totMatch}</div><div class="l">Exact match</div></div>
-    <div class="met"><div class="v cr">${totMismatch}</div><div class="l">Discrepancies</div></div>
+    <div class="met"><div class="v">${totPdf}</div><div class="l">Excel rows checked</div></div>
+    <div class="met"><div class="v cg">${totMatch}</div><div class="l">Excel correct</div></div>
+    <div class="met"><div class="v cr">${totMismatch}</div><div class="l">Excel needs update</div></div>
     <div class="met"><div class="v ca">${totMissing}</div><div class="l">Missing in Excel</div></div>
-    <div class="met"><div class="v cb">${totExtra}</div><div class="l">Extra in Excel</div></div>
-    <div class="met"><div class="v ${rate>=90?'cg':rate>=70?'ca':'cr'}">${rate}%</div><div class="l">Match rate</div></div>`;
+    <div class="met"><div class="v cb">${totExtra}</div><div class="l">Not in PDF</div></div>
+    <div class="met"><div class="v ${rate>=90?'cg':rate>=70?'ca':'cr'}">${rate}%</div><div class="l">Excel accuracy</div></div>`;
   const te=document.getElementById('tabs'),pe=document.getElementById('panels');
   te.innerHTML='';pe.innerHTML='';
   Object.keys(allResults).forEach((type,idx)=>{
@@ -466,110 +1339,168 @@ function renderResults({allResults,totPdf,totMatch,totMismatch,totMissing,totExt
     const issues=r.items.filter(i=>i.status!=='match').length;
     const tab=document.createElement('div');
     tab.className='tab'+(idx===0?' on':'');
-    tab.innerHTML=type[0].toUpperCase()+type.slice(1)+(issues>0?` <span style="background:var(--rbg);color:var(--rtxt);font-size:11px;padding:1px 7px;border-radius:10px;margin-left:5px;font-weight:700;">${issues}</span>`:'');
-    tab.onclick=()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));tab.classList.add('on');document.querySelectorAll('.pnl').forEach(p=>p.classList.remove('on'));document.getElementById('pnl-'+type).classList.add('on');};
+    tab.innerHTML=type[0].toUpperCase()+type.slice(1)+
+      (issues>0?` <span style="background:var(--rbg);color:var(--rtxt);font-size:11px;padding:1px 7px;border-radius:10px;margin-left:5px;font-weight:700;">${issues}</span>`:'');
+    tab.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+      tab.classList.add('on');
+      document.querySelectorAll('.pnl').forEach(p=>p.classList.remove('on'));
+      document.getElementById('pnl-'+type).classList.add('on');
+    };
     te.appendChild(tab);
-    const pnl=document.createElement('div');pnl.className='pnl'+(idx===0?' on':'');pnl.id='pnl-'+type;
-    pnl.innerHTML=buildPanel(type,r);pe.appendChild(pnl);
+    const pnl=document.createElement('div');
+    pnl.className='pnl'+(idx===0?' on':'');
+    pnl.id='pnl-'+type;
+    pnl.innerHTML=buildPanel(type,r);
+    pe.appendChild(pnl);
   });
+
+  // Populate summary log
+  document.getElementById('summaryLog').value=
+    generateLog(allResults,totPdf,totMatch,totMismatch,totMissing,totExtra);
+}
+
+function fmtCols(dc){
+  return dc?`obs ${dc.obsMin.toFixed(0)}–${dc.obsMax.toFixed(0)}px | act ${dc.actMin.toFixed(0)}–${dc.actMax.toFixed(0)}px | tl ${dc.tlMin.toFixed(0)}–${dc.tlMax.toFixed(0)}px`:'fallback %';
 }
 
 function buildPanel(type,r){
-  let h=`<div class="mr">
+  const isAuto=r.detectionSource&&r.detectionSource.startsWith('auto');
+  const colTag=r.detectionSource==='card format'?'':
+    `<div class="col-info">${isAuto?'&#10003; auto-detected':'⚠ fallback %'} — ${fmtCols(r.detectedCols)}</div>`;
+  let h=`${colTag}<div class="mr">
     <span>Sheet: <strong>${r.sheetName||'NOT FOUND'}</strong></span>
-    <span>PDF items: <strong>${r.pdfCount}</strong></span>
     <span>Excel rows: <strong>${r.xlsCount}</strong></span>
-    <span>Comparison: <strong>Exact</strong></span>
-  </div>`;
+    <span>PDF items: <strong>${r.pdfCount}</strong></span></div>`;
   if(!r.sheetName){h+=`<div class="wbox">&#9888; Sheet not found for "${type}".</div>`;return h;}
-  if(r.pdfCount===0){
-    h+=`<div class="wbox">&#9888; No items parsed from this PDF.<br><br>
-    Make sure you are uploading the correct report type. The PDF column layout must match the standard RSC template.</div>`;
-    return h;
-  }
-  // Show parsed sample for verification
+  if(r.pdfParseFailure){h+=`<div class="wbox">&#9888; PDF produced 0 items — the wrong PDF may have been uploaded for this inspection type, or column detection failed. Use the Debug button to inspect the PDF structure. Excel rows are <strong>not</strong> flagged as missing until a valid PDF is provided.</div>`;return h;}
+  if(!r.xlsCount){h+=`<div class="wbox">&#9888; No rows found in Excel sheet. Check the correct workbook was uploaded.</div>`;return h;}
   if(r.sample){
-    h+=`<details style="margin-bottom:12px"><summary style="font-size:12px;color:var(--text2);cursor:pointer;font-weight:500">&#9432; Verify: First item parsed from PDF (Item #${r.sample.itemNo})</summary>
-    <div style="font-size:11px;font-family:monospace;background:var(--bg2);padding:8px;border-radius:4px;margin-top:6px;white-space:pre-wrap;color:var(--text2);max-height:120px;overflow-y:auto">Observation: ${esc((r.sample.observation||'').slice(0,200))}
-Action Plan: ${esc((r.sample.actionPlan||'').slice(0,200))}
-Timeline: ${esc(r.sample.timeline||'')}</div></details>`;
+    h+=`<details style="margin-bottom:12px">
+      <summary style="font-size:12px;color:var(--text2);cursor:pointer;font-weight:500">&#9432; Verify: First item parsed from PDF (Item #${r.sample.itemNo})</summary>
+      <div style="font-size:11px;font-family:monospace;background:var(--bg2);padding:8px;border-radius:4px;margin-top:6px;white-space:pre-wrap;color:var(--text2);max-height:140px;overflow-y:auto">Observation: ${esc((r.sample.observation||'').slice(0,300))}
+Action Plan: ${esc((r.sample.actionPlan||'').slice(0,300))}
+Timeline (cleaned): ${esc(r.sample.timeline||'')}
+Timeline (raw PDF): ${esc(r.sample.rawTimeline||'')}</div></details>`;
   }
-  const mm=r.items.filter(i=>i.status==='mismatch');
-  const ms=r.items.filter(i=>i.status==='missing');
-  const ex=r.items.filter(i=>i.status==='extra');
-  const ok=r.items.filter(i=>i.status==='match');
-  if(!mm.length&&!ms.length&&!ex.length)
-    h+=`<div class="okall">&#10003; All ${ok.length} items match exactly between PDF and Excel</div>`;
+
+  const mm   = r.items.filter(i=>i.status==='mismatch');
+  const ms   = r.items.filter(i=>i.status==='missing');   // in PDF, not in Excel
+  const nopdf= r.items.filter(i=>i.status==='nopdf');     // in Excel, not in PDF
+  const ok   = r.items.filter(i=>i.status==='match');
+
+  if(!mm.length&&!ms.length&&!nopdf.length)
+    h+=`<div class="okall">&#10003; All ${ok.length} Excel rows match the PDF exactly — no updates needed</div>`;
+
+  // ── EXCEL NEEDS UPDATE (mismatch) ────────────────────────────────────────
   if(mm.length){
-    h+=`<div class="sdiv">Discrepancies <span class="sc">${mm.length}</span></div>`;
+    h+=`<div class="sdiv">Excel needs updating <span class="sc">${mm.length}</span></div>`;
     mm.forEach(item=>{
       const dO=item.discs.find(d=>d.field==='Inspection Observation');
       const dA=item.discs.find(d=>d.field==='Inspection Action Plan');
       const dT=item.discs.find(d=>d.field==='Inspection Timeline');
-      h+=`<div class="ic mm"><div class="ih">
-        <span class="bg bgm">MISMATCH</span><span class="ihn">Item #${item.itemNo}</span>
-        ${item.xlsStat?`<span class="pill ${pillCls(item.xlsStat)}">${esc(item.xlsStat)}</span>`:''}
-        ${item.xlsFinalTL?`<span class="pill pg">Due: ${esc(item.xlsFinalTL)}</span>`:''}
-        <span style="font-size:11px;color:var(--rtxt);margin-left:auto">${item.discs.length} field${item.discs.length>1?'s':''} differ</span>
-      </div><div class="fg">
-        <div class="fc">${dO?fDiff('Inspection Observation','fl-o',dO.pdf,dO.xls):fOk('Inspection Observation','fl-o',item.pdf.observation)}</div>
-        <div class="fc">${dA?fDiff('Inspection Action Plan','fl-a',dA.pdf,dA.xls):fOk('Inspection Action Plan','fl-a',item.pdf.actionPlan)}</div>
-        <div class="fc">${dT?fDiff('Inspection Timeline','fl-t',dT.pdf,dT.xls):fOk('Inspection Timeline','fl-t',item.pdf.timeline)}</div>
-      </div></div>`;
+      const dF=item.discs.find(d=>d.field==='Final Timeline');
+      const hasF=dF||(item.pdf&&item.pdf.finalTimeline);
+      const gridCols=hasF?'1fr 1fr 1fr 1fr':'1fr 1fr 1fr';
+      h+=`<div class="ic mm" id="ic-${item.overrideKey}">
+        <div class="ih">
+          <span class="bg bgm">&#9998; UPDATE EXCEL</span>
+          <span class="ihn">Item #${item.itemNo}</span>
+          ${item.xlsStat?`<span class="pill ${pillCls(item.xlsStat)}">${esc(item.xlsStat)}</span>`:''}
+          ${item.xlsFinalTL?`<span class="pill pg">Due: ${esc(item.xlsFinalTL)}</span>`:''}
+          <span style="font-size:11px;color:var(--rtxt);margin-left:auto">${item.discs.length} field${item.discs.length>1?'s':''} differ</span>
+          <button onclick="acceptOverride('${item.overrideKey}')" style="margin-left:8px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid var(--green);background:var(--gbg);color:var(--gtxt);cursor:pointer;">&#10003; Accept as Correct</button>
+        </div>
+        <div style="background:#FFF8E7;border-bottom:1px solid var(--abdr);padding:7px 16px;font-size:11px;color:var(--atxt);font-weight:600;letter-spacing:.01em;">
+          &#9888;&nbsp; Excel contains incorrect data for this item — replace the highlighted field(s) below with the PDF values (shown in green)
+        </div>
+        <div style="display:grid;grid-template-columns:${gridCols}">
+          <div class="fc">${dO?fDiff('Inspection Observation','fl-o',dO.correctVal,dO.xlsVal):fOk('Inspection Observation','fl-o',item.pdf.observation)}</div>
+          <div class="fc">${dA?fDiff('Inspection Action Plan','fl-a',dA.correctVal,dA.xlsVal):fOk('Inspection Action Plan','fl-a',item.pdf.actionPlan)}</div>
+          <div class="fc">${dT?fDiff('Inspection Timeline','fl-t',dT.correctVal,dT.xlsVal,item.pdf.rawTimeline):fOk('Inspection Timeline','fl-t',item.pdf.timeline)}</div>
+          ${hasF?`<div class="fc">${dF?fDiff('Final Timeline','fl-t',dF.correctVal,dF.xlsVal):fOk('Final Timeline','fl-t',item.pdf.finalTimeline||'')}</div>`:``}
+        </div>
+      </div>`;
     });
   }
+
+  // ── MISSING IN EXCEL (PDF has it, Excel doesn't) ─────────────────────────
   if(ms.length){
-    h+=`<div class="sdiv">Missing in Excel <span class="sc">${ms.length}</span></div>`;
+    h+=`<div class="sdiv">Missing in Excel — add from PDF <span class="sc">${ms.length}</span></div>`;
     ms.forEach(item=>{
-      h+=`<div class="ic ms"><div class="ih"><span class="bg bgms">MISSING IN EXCEL</span><span class="ihn">Item #${item.itemNo}</span></div>
-      <div class="fg">
-        <div class="fc"><div class="flbl fl-o">Inspection Observation</div><div class="ftext">${esc(item.pdf.observation)}</div></div>
-        <div class="fc"><div class="flbl fl-a">Inspection Action Plan</div><div class="ftext">${esc(item.pdf.actionPlan)}</div></div>
-        <div class="fc"><div class="flbl fl-t">Inspection Timeline</div><div class="ftext">${esc(item.pdf.timeline)||'<span class="na">—</span>'}</div></div>
-      </div></div>`;
+      h+=`<div class="ic ms">
+        <div class="ih"><span class="bg bgms">ADD TO EXCEL</span><span class="ihn">Item #${item.itemNo}</span></div>
+        <div style="background:#FFFBF0;border-bottom:1px solid var(--abdr);padding:7px 16px;font-size:11px;color:var(--atxt);font-weight:600;">
+          &#9888;&nbsp; This item exists in the PDF but has no matching row in Excel — add it
+        </div>
+        <div class="fg">
+          <div class="fc"><div class="flbl fl-o">Inspection Observation</div><div class="ftext">${esc(item.pdf.observation)||'<span class="na">—</span>'}</div></div>
+          <div class="fc"><div class="flbl fl-a">Inspection Action Plan</div><div class="ftext">${esc(item.pdf.actionPlan)||'<span class="na">—</span>'}</div></div>
+          <div class="fc"><div class="flbl fl-t">Inspection Timeline</div><div class="ftext">${esc(item.pdf.timeline)||'<span class="na">—</span>'}</div></div>
+        </div>
+      </div>`;
     });
   }
-  if(ex.length){
-    h+=`<div class="sdiv">Extra in Excel <span class="sc">${ex.length}</span></div>`;
-    ex.forEach(item=>{
-      h+=`<div class="ic ex"><div class="ih">
-        <span class="bg bgx">EXTRA IN EXCEL</span><span class="ihn">Item #${item.itemNo}</span>
-        ${item.xlsStat?`<span class="pill ${pillCls(item.xlsStat)}">${esc(item.xlsStat)}</span>`:''}
-      </div><div class="fg">
-        <div class="fc"><div class="flbl fl-o">Inspection Observation</div><div class="ftext">${esc(item.xlsObs)||'<span class="na">—</span>'}</div></div>
-        <div class="fc"><div class="flbl fl-a">Inspection Action Plan</div><div class="ftext">${esc(item.xlsAct)||'<span class="na">—</span>'}</div></div>
-        <div class="fc"><div class="flbl fl-t">Inspection Timeline</div><div class="ftext">${esc(item.xlsTL)||'<span class="na">—</span>'}</div></div>
-      </div></div>`;
+
+  // ── NOT IN PDF (Excel has it, PDF doesn't) ────────────────────────────────
+  if(nopdf.length){
+    h+=`<div class="sdiv">In Excel but not found in PDF <span class="sc">${nopdf.length}</span></div>`;
+    nopdf.forEach(item=>{
+      h+=`<div class="ic ex">
+        <div class="ih">
+          <span class="bg bgx">NOT IN PDF</span><span class="ihn">Item #${item.itemNo}</span>
+          ${item.xlsStat?`<span class="pill ${pillCls(item.xlsStat)}">${esc(item.xlsStat)}</span>`:''}
+        </div>
+        <div style="background:#EEF5FF;border-bottom:1px solid var(--bbdr);padding:7px 16px;font-size:11px;color:var(--btxt);font-weight:600;">
+          &#9432;&nbsp; No matching item found in the PDF — verify this row belongs in Excel or check for a numbering mismatch
+        </div>
+        <div class="fg">
+          <div class="fc"><div class="flbl fl-o">Inspection Observation <em style="font-weight:400;color:var(--text3)">(Excel)</em></div><div class="ftext">${esc(item.xlsObs)||'<span class="na">—</span>'}</div></div>
+          <div class="fc"><div class="flbl fl-a">Inspection Action Plan <em style="font-weight:400;color:var(--text3)">(Excel)</em></div><div class="ftext">${esc(item.xlsAct)||'<span class="na">—</span>'}</div></div>
+          <div class="fc"><div class="flbl fl-t">Inspection Timeline <em style="font-weight:400;color:var(--text3)">(Excel)</em></div><div class="ftext">${esc(item.xlsTL)||'<span class="na">—</span>'}</div></div>
+        </div>
+      </div>`;
     });
   }
+
+  // ── CORRECT MATCHES ───────────────────────────────────────────────────────
   if(ok.length){
-    h+=`<div class="sdiv">Exact matches <span class="sc">${ok.length}</span></div>`;
+    h+=`<div class="sdiv">Excel correct — matches PDF <span class="sc">${ok.length}</span></div>`;
     ok.forEach(item=>{
-      h+=`<div class="ic match"><div class="ih">
-        <span class="bg bgok">&#10003; MATCH</span><span class="ihn">Item #${item.itemNo}</span>
-        ${item.xlsStat?`<span class="pill ${pillCls(item.xlsStat)}">${esc(item.xlsStat)}</span>`:''}
-        ${item.xlsFinalTL?`<span class="pill pg">Due: ${esc(item.xlsFinalTL)}</span>`:''}
-      </div><div class="fg">
-        <div class="fc"><div class="flbl fl-o">Inspection Observation</div><div class="ftext">${esc(item.pdf.observation)}</div></div>
-        <div class="fc"><div class="flbl fl-a">Inspection Action Plan</div><div class="ftext">${esc(item.pdf.actionPlan)}</div></div>
-        <div class="fc"><div class="flbl fl-t">Inspection Timeline</div><div class="ftext">${esc(item.pdf.timeline)||'<span class="na">—</span>'}</div></div>
-      </div></div>`;
+      const hasF=item.pdf&&item.pdf.finalTimeline;
+      const gridCols=hasF?'1fr 1fr 1fr 1fr':'1fr 1fr 1fr';
+      h+=`<div class="ic match">
+        <div class="ih">
+          <span class="bg bgok">&#10003; CORRECT</span><span class="ihn">Item #${item.itemNo}</span>
+          ${item.xlsStat?`<span class="pill ${pillCls(item.xlsStat)}">${esc(item.xlsStat)}</span>`:''}
+          ${item.xlsFinalTL?`<span class="pill pg">Due: ${esc(item.xlsFinalTL)}</span>`:''}
+        </div>
+        <div style="display:grid;grid-template-columns:${gridCols}">
+          <div class="fc"><div class="flbl fl-o">Inspection Observation</div><div class="ftext">${esc(item.pdf.observation)}</div></div>
+          <div class="fc"><div class="flbl fl-a">Inspection Action Plan</div><div class="ftext">${esc(item.pdf.actionPlan)}</div></div>
+          <div class="fc"><div class="flbl fl-t">Inspection Timeline</div><div class="ftext">${esc(item.pdf.timeline)||'<span class="na">—</span>'}</div></div>
+          ${hasF?`<div class="fc"><div class="flbl fl-t">Final Timeline</div><div class="ftext">${esc(item.pdf.finalTimeline)}</div></div>`:``}
+        </div>
+      </div>`;
     });
   }
   return h;
 }
-function fDiff(label,cls,pdfVal,xlsVal){
-  return `<div class="diff-pdf"><div class="flbl ${cls}">&#9679; ${label} — PDF (truth)</div><div class="ftext">${esc(pdfVal)||'<em class="na">empty</em>'}</div></div>
-          <div class="diff-xls"><div class="flbl">&#9650; Excel differs</div><div class="ftext">${esc(xlsVal)||'<em class="na">empty</em>'}</div></div>`;
+
+function fDiff(label,cls,correctVal,xlsVal,rawVal){
+  const rawNote=(rawVal&&rawVal!==correctVal)?`<div style="font-size:10px;color:var(--text3);margin-top:3px;font-family:monospace">raw PDF: ${esc(rawVal.slice(0,80))}</div>`:'';
+  return`<div class="diff-pdf"><div class="flbl ${cls}">&#10003; CORRECT VALUE (from PDF)</div><div class="ftext">${esc(correctVal)||'<em class="na">empty in PDF</em>'}</div>${rawNote}</div>
+         <div class="diff-xls"><div class="flbl">&#9998; Excel currently says — update this</div><div class="ftext">${esc(xlsVal)||'<em class="na">empty in Excel</em>'}</div></div>`;
 }
 function fOk(label,cls,val){
-  return `<div class="flbl ${cls}">${label}</div><div class="ftext">${esc(val)||'<span class="na">—</span>'}</div>`;
+  return`<div class="flbl ${cls}">${label}</div><div class="ftext">${esc(val)||'<span class="na">—</span>'}</div>`;
 }
 function pillCls(s){
-  if(!s)return 'pg';const l=s.toLowerCase();
-  if(l.includes('pending'))return 'pp';if(l.includes('progress'))return 'pi';
-  if(l.includes('correct')||l.includes('done')||l.includes('verif'))return 'pc';
-  return 'pg';
+  if(!s)return'pg';const l=s.toLowerCase();
+  if(l.includes('pending'))return'pp';
+  if(l.includes('progress'))return'pi';
+  if(l.includes('correct')||l.includes('done')||l.includes('verif'))return'pc';
+  return'pg';
 }
 function esc(s){return(s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 </script>
